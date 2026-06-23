@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Version:  10
+    \\  /    A nd           | Website:  www.openfoam.org
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      probes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+type            probes;
+libs            ("libsampling.so");
+
+// On évite d'écrire à chaque itération pour ne pas saturer le disque.
+// Un intervalle de 10 pas (soit 1 fs si deltaT = 0.1 fs) donne une résolution parfaite.
+writeControl    timeStep;
+writeInterval   10;
+
+probeLocations
+(
+    (0 0 2.0e-6)     // Surface (0 nm)
+);
+
+fields
+(
+    Te
+    Tl
+);
+
+// ************************************************************************* //

@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      decomposeParDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Nombre de cœurs CPU alloués à la simulation
+numberOfSubdomains 4;
+
+
+method           simple ; // scotch;
+
+// La section simpleCoeffs est conservée au cas où tu rebascules sur "simple"
+simpleCoeffs
+{
+    n               (4 1 1);
+    delta           0.001; // Légèrement réduit pour éviter les problèmes d'arrondis sur les petites mailles
+}
+
+// ************************************************************************* //

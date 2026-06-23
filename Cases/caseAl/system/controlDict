@@ -1,0 +1,55 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     TTmTi;
+startFrom       startTime;
+startTime       0;
+
+// Modification : on passe à 30 ps pour correspondre aux Figures 6 et 7 de l'article
+// et observer la stabilisation complète du cratère.
+stopAt          endTime;
+endTime         20e-12; 
+
+//Le temps de relaxation des électrons est de ~0.4 fs
+// Un pas initial de 0.1 fs est plus sûr pour le début de l'impulsion.
+deltaT          1e-15;
+
+writeControl    adjustableRunTime;
+writeInterval   1e-13; // Sauvegarde toutes les 0.1 ps
+purgeWrite      0;
+
+writeFormat     ascii;
+writePrecision  8; // Augmenté à 8 pour plus de précision sur les très hautes températures
+writeCompression off;
+
+// Format scientifique imposé pour éviter les arrondis à 0 sur les temps très courts
+timeFormat      scientific;
+timePrecision   6;
+
+runTimeModifiable true;
+
+// Attention avec l'adaptation temporelle en thermique pure !
+adjustTimeStep  no;
+
+// AJOUT OBLIGATOIRE : Limite stricte du pas de temps maximal 
+// pour éviter que le solveur ne diverge après l'impulsion laser.
+maxDeltaT       1e-14; 
+
+// Très important pour que les sondes (probes) s'activent !
+libs            ("libsampling.so");
+
+// ************************************************************************* //

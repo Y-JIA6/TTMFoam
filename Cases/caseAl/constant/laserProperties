@@ -1,0 +1,27 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    location        "constant";
+    object          laserProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+tau             [ 0 0 1 0 0 0 0 ] 2.8e-13;
+
+w0              [ 0 1 0 0 0 0 0 ] 1e-05;
+
+lambda          [ 0 1 0 0 0 0 0 ] 1.032e-06;
+
+F_laser         90000;
+
+
+// ************************************************************************* //

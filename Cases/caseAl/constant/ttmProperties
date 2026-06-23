@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           |
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      ttmProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// 0. PARAMÈTRES GLOBAUX ET INITIALISATION
+
+// Température initiale (ambiante)
+T0              [0 0 0 1 0 0 0] 300.0;
+
+// Coefficient de couplage Électron-Phonon G [W/(m3.K)]
+// Dimension : [Masse L^-1 Temps^-3 Temp^-1]
+G               [1 -1 -3 -1 0 0 0] 2.5e17; 
+
+// Valeurs de référence (Servent uniquement à l'initialisation des champs)
+Ce              [1 -1 -2 -1 0 0 0] 2.3e4; // replaced by gamma
+Cl              [1 -1 -2 -1 0 0 0] 2.4e6; // update with Shomate
+ke              [1 1 -3 -1 0 0 0] 178.0;  // update with Drude
+kl              [1 1 -3 -1 0 0 0] 1.8;    // update by ke / 99
+
+
+// 1. CAPACITÉ ÉLECTRONIQUE Ce(Te)
+
+// Constante de Sommerfeld gamma [J/(m3.K2)]
+gamma           [1 -1 -2 -2 0 0 0] 76.7; 
+
+// Potentiel chimique (Énergie de Fermi) de l'Aluminium mu [J]
+// Valeur : 11.7 eV * 1.602176634e-19 J/eV
+// Dimension : [Masse L^2 Temps^-2 Temp^0 0 0 0] (Énergie)
+mu              [1 2 -2 0 0 0 0] 1.87454666e-18;
+
+
+// 2. MODÈLE DE DRUDE : RELAXATION ET CONDUCTIVITÉ
+// Constante venant de l'article 
+// Constante de collision électron-électron Ae [s^-1.K^-2]
+Ae              [0 0 -1 -2 0 0 0]  0.376e7;//
+
+// Constante de collision électron-phonon Bl [s^-1.K^-1]
+Bl              [0 0 -1 -1 0 0 0]  5.92e11; //
+
+// Vitesse de Fermi vF [m/s]
+vF              [0 1 -1 0 0 0 0] 2.03e6;
+
+
+// 3. THERMODYNAMIQUE DU RÉSEAU Cl(Tl)
+
+// Coefficients adimensionnels du NIST (Aluminium Solide : 298.15 K - 933.47 K)
+ShA_sol         [0 0 0 0 0 0 0] 28.089;
+ShB_sol         [0 0 0 0 0 0 0] -5.415;
+ShC_sol         [0 0 0 0 0 0 0] 8.560;
+ShD_sol         [0 0 0 0 0 0 0] 3.427;
+ShE_sol         [0 0 0 0 0 0 0] -0.277;
+
+// Coefficients adimensionnels du NIST (Aluminium Liquide : 933.47 K - 6000 K)
+// Requis par l'article pour différencier les phases solide et liquide
+ShA_liq         [0 0 0 0 0 0 0] 31.751;
+ShB_liq         [0 0 0 0 0 0 0] 0.0;
+ShC_liq         [0 0 0 0 0 0 0] 0.0;
+ShD_liq         [0 0 0 0 0 0 0] 0.0;
+ShE_liq         [0 0 0 0 0 0 0] 0.0;
+
+// Multiplicateur pour conversion de [J/(mol.K)] vers [J/(m3.K)]
+// Valeur = (rho / M) = 2700 / 0.02698 = 100074.1
+Cl_mult         [1 -1 -2 -1 0 0 0] 100074.1;
+
