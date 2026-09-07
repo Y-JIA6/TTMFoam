@@ -15,41 +15,36 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     TTmTi;
+application     TTmAl;
+
 startFrom       startTime;
 startTime       0;
-
-// Modification : on passe à 30 ps pour correspondre aux Figures 6 et 7 de l'article
-// et observer la stabilisation complète du cratère.
 stopAt          endTime;
-endTime         20e-12; 
+endTime         20e-12;         // 20 ps, long enough for the lattice to equilibrate
 
-//Le temps de relaxation des électrons est de ~0.4 fs
-// Un pas initial de 0.1 fs est plus sûr pour le début de l'impulsion.
-deltaT          1e-15;
+deltaT          1e-15;          // 1 fs; the electron relaxation time is about 0.4 fs
 
 writeControl    adjustableRunTime;
-writeInterval   1e-13; // Sauvegarde toutes les 0.1 ps
+writeInterval   1e-13;          // one write every 0.1 ps
 purgeWrite      0;
 
 writeFormat     ascii;
-writePrecision  8; // Augmenté à 8 pour plus de précision sur les très hautes températures
+writePrecision  8;              // 8 digits to resolve the very high electron temperatures
 writeCompression off;
 
-// Format scientifique imposé pour éviter les arrondis à 0 sur les temps très courts
-timeFormat      scientific;
+timeFormat      scientific;     // keeps the very short times from rounding down to 0
 timePrecision   6;
 
 runTimeModifiable true;
 
-// Attention avec l'adaptation temporelle en thermique pure !
-adjustTimeStep  no;
+adjustTimeStep  no;             // fixed stepping, the solver drives dt itself
+maxDeltaT       1e-14;          // 10 fs ceiling, keeps the solver stable after the pulse
 
-// AJOUT OBLIGATOIRE : Limite stricte du pas de temps maximal 
-// pour éviter que le solveur ne diverge après l'impulsion laser.
-maxDeltaT       1e-14; 
+libs            ("libsampling.so");     // required by the probes function object
 
-// Très important pour que les sondes (probes) s'activent !
-libs            ("libsampling.so");
+// Picard outer loop, bounds on the non-linear electron-lattice coupling
 
+picardMaxIter   15;
+picardAbsTol    0.001;
+picardRelTol    1e-06;
 // ************************************************************************* //
