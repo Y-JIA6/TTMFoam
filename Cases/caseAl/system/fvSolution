@@ -17,26 +17,28 @@ FoamFile
 
 solvers
 {
+    // Solve the inner linear systems to convergence so that the outer Picard
+    // criterion measures nonlinear-property updates rather than linear error.
     Te
     {
         solver          GAMG;
-        tolerance       1e-6;   // Stoppe le calcul dès que l'erreur est "très petite"
-        relTol          0.01;   // Stoppe si le résidu est divisé par 100
-        smoother        GaussSeidel; // Lisse les erreurs à chaque itération
-        nPreSweeps      0; // Pas de pré-lissage
-        nPostSweeps     2;// Lissage après chaque itération pour accélérer la convergence
-        cacheAgglomeration true; // comme ca openfoam comprend que le maillage ne change pas et peut réutiliser les données d'agglomération
-        nCellsInCoarsestLevel 50; // Taille maximale des cellules dans le niveau le plus grossier de l'agglomération
-        agglomerator    faceAreaPair; // Méthode d'agglomération basée sur les paires de faces
-        mergeLevels     1; // Nombre de niveaux d'agglomération à fusionner
+        tolerance       1e-8;   // Absolute linear-solver tolerance.
+        relTol          0;      // Do not stop on a relative-residual reduction.
+        smoother        GaussSeidel;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        cacheAgglomeration true; // Reuse agglomeration because the mesh is static.
+        nCellsInCoarsestLevel 50;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
     }
 
     Tl
     {
-        solver          PCG;    // Parfait pour la matrice de Tl
-        preconditioner  DIC;    // Indispensable avec PCG pour accélérer la convergence
-        tolerance       1e-6;
-        relTol          0.01;
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-8;
+        relTol          0;      // Do not stop on a relative-residual reduction.
     }
 }
 
