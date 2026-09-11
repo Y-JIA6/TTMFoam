@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     TTmTi;
+application     TTmAl;
 startFrom       startTime;
 startTime       0;
 
@@ -47,5 +47,12 @@ maxDeltaT       1e-14;
 
 // Ativate probes
 libs            ("libsampling.so");
+
+// Picard (outer) iteration controls -- same criteria as the physics case, so
+// that MMS verifies the production code path.
+//   e_abs = max_cells |T^(k) - T^(k-1)| [K] ; e_rel = e_abs / max_cells |T^(k)|
+picardMaxIter   15;
+picardAbsTol    1e-3;    // K
+picardRelTol    1e-6;    // dimensionless
 
 // ************************************************************************* //
