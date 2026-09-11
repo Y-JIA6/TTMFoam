@@ -26,7 +26,7 @@ namespace ttm
 }
 
 // ---------------------------------------------------------------------------
-// 1. Chemical potential mu(Te) at conserved electron number.
+// 1. Chemical potential at conserved electron number
 // ---------------------------------------------------------------------------
 inline scalar calculateMu(scalar Te, scalar EF, scalar gamma)
 {
@@ -35,13 +35,13 @@ inline scalar calculateMu(scalar Te, scalar EF, scalar gamma)
     const scalar kT = kB*Te;
 
     const scalar r   = kT/EF;
-    const scalar muS = EF*(1.0 - (pi*pi/12.0)*r*r);   // Sommerfeld estimate
+    const scalar muS = EF*(1.0 - (pi*pi/12.0)*r*r);   // Sommerfeld estimate.
     if (Te <= 13000.0) return muS;
 
-    const scalar n = 2.0*gamma*EF/(pi*pi*kB*kB);       // electron density (FEG)
-    const scalar C = 1.5*n*Foam::pow(EF, -1.5);        // DOS prefactor
+    const scalar n = 2.0*gamma*EF/(pi*pi*kB*kB);       // Free-electron density.
+    const scalar C = 1.5*n*Foam::pow(EF, -1.5);        // Density-of-states prefactor.
 
-    // bisection: find mu such that integral of g*f equals n
+    // Solve the number-conservation integral by bisection.
     scalar lo = -15.0*kT, hi = EF, mu = EF;
     const int M = 1000;
     for (int it = 0; it < 60; ++it)
@@ -55,9 +55,9 @@ inline scalar calculateMu(scalar Te, scalar EF, scalar gamma)
             const scalar E = i*dE;
             const scalar X = (E - mu)/kT;
             scalar f = 0.0;
-            if (X < -50.0)      f = 1.0;                   // avoid exp overflow
+            if (X < -50.0)      f = 1.0;                   // Avoid exponential overflow.
             else if (X < 50.0)  f = 1.0/(Foam::exp(X) + 1.0);
-            const scalar w = (i == 0 || i == M) ? 0.5 : 1.0; // trapezoid ends
+            const scalar w = (i == 0 || i == M) ? 0.5 : 1.0; // Trapezoidal endpoint weight.
             nCalc += w*C*Foam::sqrt(E)*f*dE;
         }
         if (nCalc > n) hi = mu; else lo = mu;
@@ -65,36 +65,37 @@ inline scalar calculateMu(scalar Te, scalar EF, scalar gamma)
 
     if (Te >= 14000.0) return mu;
 
-    // Hann blend between Sommerfeld (muS) and exact (mu) over 13000-14000 K
+    // Blend the Sommerfeld and numerical values between 13000 and 14000 K.
     const scalar wgt = 0.5*(1.0 - Foam::cos(pi*(Te - 13000.0)/1000.0));
     return (1.0 - wgt)*muS + wgt*mu;
 }
 
 // ---------------------------------------------------------------------------
-// 2. Electron heat capacity
+// 2. Electron heat capacity from Fermi--Dirac energy moments
 // ---------------------------------------------------------------------------
 inline scalar calculateCe(scalar Te, scalar EF, scalar gamma, scalar mu)
 {
     const scalar kB = ttm::kB;
     const scalar pi = constant::mathematical::pi;
     const scalar kT = kB*Te;
-    if (Te < 1.0) return gamma*Te;       // low-T limit
+    if (Te < 1.0) return gamma*Te;       // Use the low-temperature limit.
 
     const scalar n = 2.0*gamma*EF/(pi*pi*kB*kB);
     const scalar C = 1.5*n*Foam::pow(EF, -1.5);
 
-    const scalar Elo = max(1e-12, mu - 60.0*kT);   // window +/-60 kT around mu
+    // Integrate over a positive-energy window extending 60 kT around mu.
+    const scalar Elo = max(1e-6*ttm::eV, mu - 60.0*kT);
     const scalar Ehi = mu + 60.0*kT;
     const int N = 4000;
     const scalar dE = (Ehi - Elo)/N;
 
-    scalar A0 = 0.0, A1 = 0.0, A2 = 0.0;   // 0th,1st,2nd moments of g*f(1-f)
+    scalar A0 = 0.0, A1 = 0.0, A2 = 0.0;   // Zeroth, first, and second energy moments.
     for (int i = 0; i <= N; ++i)
     {
         const scalar E = Elo + i*dE;
         if (E <= 0.0) continue;
         const scalar X = (E - mu)/kT;
-        scalar f1mf = 0.0;                  // f(1-f), peaked near mu
+        scalar f1mf = 0.0;                  // Fermi weighting centred near mu.
         if (X > -50.0 && X < 50.0)
         {
             const scalar ex = Foam::exp(X);
@@ -109,8 +110,8 @@ inline scalar calculateCe(scalar Te, scalar EF, scalar gamma, scalar mu)
         A2 += weight * Foam::sqr(E - mu);
     }
 
-    if (A0 < 1e-300) return gamma*Te;    // numerical guard only
-    return (A2 - A1*A1/A0) / (kB*Te*Te); // variance form / (kB Te^2)
+    if (A0 < 1e-300) return gamma*Te;    // Guard against a vanishing numerical integral.
+    return (A2 - A1*A1/A0) / (kB*Te*Te); // Convert the energy variance to heat capacity.
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +137,7 @@ inline scalar calculateIntegralG(scalar Te, scalar EF, scalar gamma, scalar mu)
         const scalar E = Elo + i*dE;
         if (E <= 0.0) continue;
         const scalar X = (E - mu)/kT;
-        scalar mdf = 0.0;                          // -df/dE
+        scalar mdf = 0.0;                          // Negative energy derivative of the Fermi function.
         if (X > -50.0 && X < 50.0)
         {
             const scalar ex = Foam::exp(X);
@@ -150,54 +151,53 @@ inline scalar calculateIntegralG(scalar Te, scalar EF, scalar gamma, scalar mu)
 }
 
 // ---------------------------------------------------------------------------
-// 4. Lattice heat capacity Cl (Shomate, solid/liquid branches)
+// 4. Lattice heat capacity from solid and liquid Shomate branches
 // ---------------------------------------------------------------------------
 inline scalar calculateShomateCl
 (
     scalar Tl,
     scalar A_sol, scalar B_sol, scalar C_sol, scalar D_sol, scalar E_sol,
     scalar A_liq, scalar B_liq, scalar C_liq, scalar D_liq, scalar E_liq,
-    scalar cl_mult, scalar cl_base
+    scalar cl_mult
 )
 {
-    scalar Tl_safe = min(Tl, 2743.0);     // saturate liquid polynomial
-    const scalar t = Tl_safe / 1000.0;    // Shomate uses T/1000
+    scalar Tl_safe = min(Tl, 2743.0);     // Saturate the liquid polynomial.
+    const scalar t = Tl_safe / 1000.0;    // Shomate uses temperature divided by 1000.
 
-    if (Tl_safe < 933.47)   // solid (Al melting point 933.47 K)
+    if (Tl_safe < 933.47)   // Use the solid branch below the aluminum melting point.
     {
         const scalar cp = A_sol + B_sol*t + C_sol*Foam::sqr(t)
                         + D_sol*Foam::pow(t,3) + E_sol/Foam::sqr(t);
-        return max(cl_base, cp*cl_mult);
+        return cp*cl_mult;
     }
-    else                    // liquid
+    else                    // Use the liquid branch.
     {
         const scalar cp = A_liq + B_liq*t + C_liq*Foam::sqr(t)
                         + D_liq*Foam::pow(t,3) + E_liq/Foam::sqr(t);
-        return max(cl_base, cp*cl_mult);
+        return cp*cl_mult;
     }
 }
 
 // ---------------------------------------------------------------------------
-// 5. Electron relaxation time  1/tau_e = Ae*Te^2 + Bl*Tl.
+// 5. Electron relaxation time: 1/tau_e = Ae Te^2 + Bl Tl
 // ---------------------------------------------------------------------------
 inline scalar calculateTauE(scalar Te, scalar Tl, scalar Ae, scalar Bl)
 {
-    return 1.0/(Ae*Foam::sqr(Te) + Bl*(Tl));
+    return 1.0/(Ae*Foam::sqr(Te) + Bl*Tl);
 }
 
 // ---------------------------------------------------------------------------
-// 6. Electron thermal conductivity  ke = (1/3) vF^2 tau_e Ce  (kinetic theory).
+// 6. Electron thermal conductivity from kinetic theory
 // ---------------------------------------------------------------------------
-inline scalar calculateKe(scalar tau_e, scalar Ce, scalar vF, scalar ke_base)
+inline scalar calculateKe(scalar tau_e, scalar Ce, scalar vF)
 {
-    const scalar ke = (1.0/3.0)*Foam::sqr(vF)*tau_e*Ce;
-    return max(ke_base, ke);
+    return (1.0/3.0)*Foam::sqr(vF)*tau_e*Ce;
 }
 
 // ---------------------------------------------------------------------------
-// 7. Lattice thermal conductivity  kl ~ ke/99 
+// 7. Lattice thermal conductivity: kl = ke/99
 // ---------------------------------------------------------------------------
-inline scalar calculateKl(scalar ke, scalar kl_base)
+inline scalar calculateKl(scalar ke)
 {
     return ke/99.0;
 }
