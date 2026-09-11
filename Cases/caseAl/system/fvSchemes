@@ -17,7 +17,7 @@ FoamFile
 
 ddtSchemes
 {
-    default         Euler; // Implicite, parfait pour ce modèle 
+    default         Euler; // Implicit first-order time integration.
 }
 
 gradSchemes
@@ -27,13 +27,13 @@ gradSchemes
 
 divSchemes
 {
-    default         none; // Pas de convection des fluides, c'est correct
+    default         none; // The TTM equations contain no convective fluxes.
 }
 
 laplacianSchemes
 {
-    // utilisation de "corrected" avec un wedge axisymétrique car les cellules sont légèrement déformées
-    default         Gauss linear corrected; 
+    // Correct the normal gradient for the non-orthogonality of the wedge mesh.
+    default         Gauss linear corrected;
 }
 
 interpolationSchemes
@@ -43,7 +43,7 @@ interpolationSchemes
 
 snGradSchemes
 {
-    // utilisation de "corrected" avec un wedge axisymétrique
+    // Use the same non-orthogonality correction for surface-normal gradients.
     default         corrected;
 }
 
