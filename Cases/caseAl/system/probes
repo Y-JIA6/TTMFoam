@@ -17,20 +17,37 @@ FoamFile
 type            probes;
 libs            ("libsampling.so");
 
-// On évite d'écrire à chaque itération pour ne pas saturer le disque.
-// Un intervalle de 10 pas (soit 1 fs si deltaT = 0.1 fs) donne une résolution parfaite.
+// Ten-step sampling gives 10 fs resolution during the pulse and 100 fs after
+// 2 ps, while limiting the diagnostic output volume.
 writeControl    timeStep;
 writeInterval   10;
 
+// The off-axis probes avoid the degenerate wedge-axis corner. They sample the
+// first-cell centre and five successive depths on the beam axis region.
+// Optical diagnostic fields are non-zero only in the first cell layer.
 probeLocations
 (
-    (0 0 2.0e-6)     // Surface (0 nm)
+    (0       0 2.0e-6)          // Existing surface-axis probe.
+    (2.5e-8  0 1.99999975e-6)   // 0.25 nm below the surface.
+    (2.5e-8  0 1.98e-6)         // 20 nm below the surface.
+    (2.5e-8  0 1.94e-6)         // 60 nm below the surface.
+    (2.5e-8  0 1.88e-6)         // 120 nm below the surface.
+    (2.5e-8  0 1.80e-6)         // 200 nm below the surface.
+    (2.5e-8  0 1.70e-6)         // 300 nm below the surface.
 );
 
 fields
 (
     Te
     Tl
+    Qlaser          // Volumetric laser source.
+    Ce_var          // Electron heat capacity.
+    ke_var          // Electron thermal conductivity.
+    G_var           // Electron-phonon coupling factor.
+    R_field         // Drude reflectivity.
+    deltaOpt_field  // Optical penetration depth.
+    deltaEff_field  // Effective optical-plus-ballistic penetration depth.
+    tauE_field      // Electron relaxation time.
 );
 
 // ************************************************************************* //
