@@ -12,65 +12,66 @@ FoamFile
     class       dictionary;
     object      ttmProperties;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// ===========================================================================
+//  ttmProperties
+//  Material parameters for the aluminum two-temperature-model case.
+//  SI units are used throughout unless explicitly stated otherwise.
+// ===========================================================================
 
-// 0. PARAMÈTRES GLOBAUX ET INITIALISATION
-
-// Température initiale (ambiante)
+// ---------------------------------------------------------------------------
+// 0. Ambient state and reference values
+// ---------------------------------------------------------------------------
 T0              [0 0 0 1 0 0 0] 300.0;
 
-// Coefficient de couplage Électron-Phonon G [W/(m3.K)]
-// Dimension : [Masse L^-1 Temps^-3 Temp^-1]
-G               [1 -1 -3 -1 0 0 0] 2.5e17; 
+// Reference electron--phonon coupling coefficient G(300 K) [W/(m3.K)].
+G               [1 -1 -3 -1 0 0 0] 2.5e17;
 
-// Valeurs de référence (Servent uniquement à l'initialisation des champs)
-Ce              [1 -1 -2 -1 0 0 0] 2.3e4; // replaced by gamma
-Cl              [1 -1 -2 -1 0 0 0] 2.4e6; // update with Shomate
-ke              [1 1 -3 -1 0 0 0] 178.0;  // update with Drude
-kl              [1 1 -3 -1 0 0 0] 1.8;    // update by ke / 99
+// Initial values overwritten during the first Picard iteration.
+Ce              [1 -1 -2 -1 0 0 0] 2.3e4;   // FEG value near 300 K [J/(m3.K)].
+Cl              [1 -1 -2 -1 0 0 0] 2.4e6;   // Shomate value near 300 K [J/(m3.K)].
+ke              [1 1 -3 -1 0 0 0] 178.0;    // Kinetic-theory value near 300 K [W/(m.K)].
+kl              [1 1 -3 -1 0 0 0] 1.8;      // ke/99 near 300 K [W/(m.K)].
 
+// ---------------------------------------------------------------------------
+// 1. Free-electron-gas thermodynamics
+// ---------------------------------------------------------------------------
 
-// 1. CAPACITÉ ÉLECTRONIQUE Ce(Te)
+gamma           [1 -1 -2 -2 0 0 0]        76.7;  // Sommerfeld coefficient [J/(m3.K2)].
 
-// Constante de Sommerfeld gamma [J/(m3.K2)]
-gamma           [1 -1 -2 -2 0 0 0] 76.7; 
+// Aluminum Fermi energy read as EF by createTables.H [J].
+mu              [1 2 -2 0 0 0 0] 1.87454666e-18;   // EF = 11.7 eV
 
-// Potentiel chimique (Énergie de Fermi) de l'Aluminium mu [J]
-// Valeur : 11.7 eV * 1.602176634e-19 J/eV
-// Dimension : [Masse L^2 Temps^-2 Temp^0 0 0 0] (Énergie)
-mu              [1 2 -2 0 0 0 0] 1.87454666e-18;
+// ---------------------------------------------------------------------------
+// 2. Electron relaxation and transport
+// ---------------------------------------------------------------------------
 
+// Electron--electron collision coefficient Ae [1/(s.K2)].
+Ae              [0 0 -1 -2 0 0 0]    0.376e7;
 
-// 2. MODÈLE DE DRUDE : RELAXATION ET CONDUCTIVITÉ
-// Constante venant de l'article 
-// Constante de collision électron-électron Ae [s^-1.K^-2]
-Ae              [0 0 -1 -2 0 0 0]  0.376e7;//
+// Electron--phonon collision coefficient Bl [1/(s.K)].
+Bl              [0 0 -1 -1 0 0 0]  5.92e11;
 
-// Constante de collision électron-phonon Bl [s^-1.K^-1]
-Bl              [0 0 -1 -1 0 0 0]  5.92e11; //
-
-// Vitesse de Fermi vF [m/s]
+// Fermi velocity vF [m/s].
 vF              [0 1 -1 0 0 0 0] 2.03e6;
 
+// ---------------------------------------------------------------------------
+// 3. Lattice thermodynamics
+// ---------------------------------------------------------------------------
 
-// 3. THERMODYNAMIQUE DU RÉSEAU Cl(Tl)
-
-// Coefficients adimensionnels du NIST (Aluminium Solide : 298.15 K - 933.47 K)
+// Dimensionless NIST coefficients for solid aluminum: 298.15 K to 933.47 K.
 ShA_sol         [0 0 0 0 0 0 0] 28.089;
 ShB_sol         [0 0 0 0 0 0 0] -5.415;
 ShC_sol         [0 0 0 0 0 0 0] 8.560;
 ShD_sol         [0 0 0 0 0 0 0] 3.427;
 ShE_sol         [0 0 0 0 0 0 0] -0.277;
 
-// Coefficients adimensionnels du NIST (Aluminium Liquide : 933.47 K - 6000 K)
-// Requis par l'article pour différencier les phases solide et liquide
+// Dimensionless NIST coefficients for liquid aluminum: 933.47 K to 6000 K.
 ShA_liq         [0 0 0 0 0 0 0] 31.751;
 ShB_liq         [0 0 0 0 0 0 0] 0.0;
 ShC_liq         [0 0 0 0 0 0 0] 0.0;
 ShD_liq         [0 0 0 0 0 0 0] 0.0;
 ShE_liq         [0 0 0 0 0 0 0] 0.0;
 
-// Multiplicateur pour conversion de [J/(mol.K)] vers [J/(m3.K)]
-// Valeur = (rho / M) = 2700 / 0.02698 = 100074.1
+// Conversion factor from [J/(mol.K)] to [J/(m3.K)].
+// Value = (rho / M) = 2700 / 0.02698 = 100074.1.
 Cl_mult         [1 -1 -2 -1 0 0 0] 100074.1;
-
