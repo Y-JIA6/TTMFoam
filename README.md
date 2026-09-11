@@ -92,7 +92,9 @@ TTMFoam/
 │   ├── updateThermo.H           # thermophysical properties and relaxation time
 │   ├── updateOptical.H          # calibrated Drude R and delta_opt
 │   ├── calculateLaser.H         # Beer--Lambert laser source
-│   ├── mmsParams.H, mmS.H, mmSL2.H
+│   ├── mmsParams.H              # manufactured solution and MMS parameters
+│   ├── mmS.H                    # manufactured source terms
+│   ├── mmSL2.H                  # MMS L2-error evaluation
 │   └── Make/                    # wmake configuration
 ├── Cases/
 │   ├── caseAl/                  # aluminium validation case
@@ -141,7 +143,7 @@ bash scripts/Allrun.sh
 
 The campaign evaluates fluences from 1 to 9 J/cm2. The 1 J/cm2 case begins at 20 ps. If crater growth remains significant, the same case is repeated from `t = 0` with an end time increased by 10 ps. Once accepted, the next fluence begins at the previous accepted end time plus 10 ps. The default safety limit is 200 ps.
 
-The crater diagnostic uses a 0.5 nm growth threshold and requires 10 ps without significant depth or radius growth. Only the accepted result for each fluence is retained in `Res.txt`; all attempted endpoints are recorded in `convergence_history/crater_quiet_convergence.tsv`.
+The crater diagnostic uses a 0.5 nm event-detection threshold and requires 10 ps without significant depth or radius growth. It also compares two successive endpoints: the depth and diameter changes must be smaller than the corresponding local mesh resolutions. Only the accepted result for each fluence is retained in `Res.txt`; all attempted endpoints are recorded in `convergence_history/crater_geometry_convergence.tsv`.
 
 To run the same procedure for one already configured fluence:
 
