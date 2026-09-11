@@ -17,26 +17,28 @@ FoamFile
 
 solvers
 {
+    // Use strict linear tolerances so the MMS error measures discretization,
+    // rather than an incomplete solution of the linear systems.
     Te
     {
         solver          GAMG;
-        tolerance       1e-6;   
-        relTol          0.01;   
-        smoother        GaussSeidel; 
-        nPreSweeps      0; 
+        tolerance       1e-10;
+        relTol          0;
+        smoother        GaussSeidel;
+        nPreSweeps      0;
         nPostSweeps     2;
-        cacheAgglomeration true; 
-        nCellsInCoarsestLevel 50; 
-        agglomerator    faceAreaPair; 
-        mergeLevels     1; 
+        cacheAgglomeration true;
+        nCellsInCoarsestLevel 50;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
     }
 
     Tl
     {
-        solver          PCG;    
-        preconditioner  DIC;    
-        tolerance       1e-6;
-        relTol          0.01;
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-10;
+        relTol          0;
     }
 }
 
