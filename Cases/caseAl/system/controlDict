@@ -16,35 +16,42 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 application     TTmAl;
-
 startFrom       startTime;
 startTime       0;
+
 stopAt          endTime;
-endTime         20e-12;         // 20 ps, long enough for the lattice to equilibrate
+endTime         1e-14;
+mmsVerification true;
 
-deltaT          1e-15;          // 1 fs; the electron relaxation time is about 0.4 fs
 
-writeControl    adjustableRunTime;
-writeInterval   1e-13;          // one write every 0.1 ps
+deltaT          1e-17;
+
+writeControl    timeStep;
+writeInterval   1000;
+
 purgeWrite      0;
 
 writeFormat     ascii;
-writePrecision  8;              // 8 digits to resolve the very high electron temperatures
+writePrecision  8; 
 writeCompression off;
 
-timeFormat      scientific;     // keeps the very short times from rounding down to 0
+timeFormat      scientific;
 timePrecision   6;
-
 runTimeModifiable true;
 
-adjustTimeStep  no;             // fixed stepping, the solver drives dt itself
-maxDeltaT       1e-14;          // 10 fs ceiling, keeps the solver stable after the pulse
+// Time step control (for MMS verification only)
+adjustTimeStep  no;
+maxDeltaT       1e-14; 
 
-libs            ("libsampling.so");     // required by the probes function object
 
-// Picard outer loop, bounds on the non-linear electron-lattice coupling
 
+// Ativate probes
+libs            ("libsampling.so");
+
+// Picard (outer) iteration controls : same criteria as the physics case, so
+// that MMS verifies the production code path.
 picardMaxIter   15;
-picardAbsTol    0.001;
-picardRelTol    1e-06;
+picardAbsTol    1e-3;    // K
+picardRelTol    1e-6;    // dimensionless
+
 // ************************************************************************* //
