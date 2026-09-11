@@ -1,5 +1,11 @@
 #!/bin/bash
+# ---------------------------------------------------------------------------
+# File: mmsrun.sh
+# Purpose: Perform the MMS spatial-convergence study by refining the axial
+#          mesh and recording the L2 errors for Te and Tl.
+# ---------------------------------------------------------------------------
 
+# Stop immediately if a command fails.
 set -e
 START_TOTAL=$(date +%s)
 
@@ -7,13 +13,15 @@ SOLVER=TTmAl
 NZ_LIST="16 32 64 128"
 
 echo "-------------------------------------------------"
-echo "   VERIFICATION MMS - Etude de convergence L2    "
+echo "   MMS VERIFICATION - SPATIAL L2 CONVERGENCE     "
 echo "-------------------------------------------------"
 
-# --- MMS switch activated --------------------------------
+# ---------------------------------------------------------------------------
+# 1. Confirm that MMS mode is active
+# ---------------------------------------------------------------------------
 if ! grep -q "mmsVerification true" system/controlDict ; then
-    echo "ERREUR: 'mmsVerification true;' absent from system/controlDict."
-    echo "        Add it before launching the verification."
+    echo "ERROR: 'mmsVerification true;' is missing from system/controlDict."
+    echo "       Enable it before launching the verification."
     exit 1
 fi
 echo "[OK] mmsVerification is active in controlDict"
@@ -27,31 +35,38 @@ do
     echo "   Nz = $NZ"
     echo "-------------------------------------------------"
 
-    # [1] Cleanning 
+    # -----------------------------------------------------------------------
+    # 2. Clean the previous mesh and MMS output
+    # -----------------------------------------------------------------------
     rm -f log.*
     foamListTimes -rm > /dev/null 2>&1 || true
     rm -rf processor* postProcessing/ 2>/dev/null || true
     rm -f mms_error.dat
 
-    # [2] Here we modify dynamically the mesh size in blockMeshDict (NZ) and rebuild the mesh
+    # -----------------------------------------------------------------------
+    # 3. Update the axial mesh resolution and rebuild the mesh
+    # -----------------------------------------------------------------------
     sed -i -E "s/hex \(0 1 2 0 3 4 5 3\) \([0-9]+ 1 [0-9]+\)/hex (0 1 2 0 3 4 5 3) (200 1 $NZ)/" system/blockMeshDict
     sed -i -E "s/simpleGrading \([0-9.]+ [0-9.]+ [0-9.]+\)/simpleGrading (1 1 1)/" system/blockMeshDict
 
-    # [3] Mesh series
-    echo "   [maillage] blockMesh"
+    echo "   [mesh] blockMesh"
     blockMesh > log.blockMesh 2>&1
 
-    # [4] Resolution 
-    echo "   [calcul]   $SOLVER (serie)"
+    # -----------------------------------------------------------------------
+    # 4. Solve the MMS case in serial
+    # -----------------------------------------------------------------------
+    echo "   [solve]  $SOLVER (serial)"
     $SOLVER > log.$SOLVER 2>&1
 
-    # Verification of the presence of the MMS banner in the solver log
+    # Confirm that the solver reported the MMS mode in its log.
     if ! grep -q "MODE MMS IS ACTIVE" log.$SOLVER ; then
         echo "   Warning : MMS banner not found in solver log."
         echo "              Verify mmsVerification in controlDict."
     fi
 
-    # [5] Check if mms_error.dat exists and extract the last line for L2 errors
+    # -----------------------------------------------------------------------
+    # 5. Extract the final L2 errors
+    # -----------------------------------------------------------------------
     if [ -f mms_error.dat ]; then
         LAST=$(tail -1 mms_error.dat)
         L2TE=$(echo "$LAST" | awk '{print $2}')
@@ -65,7 +80,7 @@ done
 
 echo ""
 echo "-------------------------------------------------"
-echo "   CONVERGENCE Table (mms_conv.dat)"
+echo "   CONVERGENCE TABLE (mms_conv.dat)"
 echo "-------------------------------------------------"
 cat mms_conv.dat
 
@@ -77,7 +92,9 @@ awk 'NR>1{
      }
      {prevN=$1; prevE=$2}' mms_conv.dat
 
-# --- Plotting ---------------------------------------------------
+# ---------------------------------------------------------------------------
+# 6. Generate the spatial-convergence plot when gnuplot is available
+# ---------------------------------------------------------------------------
 if command -v gnuplot >/dev/null 2>&1 && [ -f spacialconvergence.gp ]; then
     echo ""
     echo "   [plot] gnuplot spacialconvergence.gp -> spacialconvergence.png"
@@ -87,7 +104,7 @@ fi
 END_TOTAL=$(date +%s)
 echo ""
 echo "-------------------------------------------------"
-echo "   VERIFICATION MMS - FINISHED"
-echo "   TOTAL TIME : $((END_TOTAL - START_TOTAL)) s"
-echo "   Results   : mms_conv.dat  (+ spacialconvergence.png)"
+echo "   MMS VERIFICATION COMPLETED"
+echo "   TOTAL TIME: $((END_TOTAL - START_TOTAL)) s"
+echo "   RESULTS: mms_conv.dat (+ spacialconvergence.png)"
 echo "-------------------------------------------------"
