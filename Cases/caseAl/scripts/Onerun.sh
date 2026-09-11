@@ -1,63 +1,74 @@
 #!/bin/bash
+# ---------------------------------------------------------------------------
+# File: Onerun.sh
+# Purpose: Clean, mesh, decompose, and solve one aluminium TTM case on four
+#          MPI ranks. The solver must be compiled before this script is run.
+# ---------------------------------------------------------------------------
 
-# Arrêter le script en cas d'erreur fatale
+# Stop immediately if a command fails.
 set -e
 
-# =================================================================
-# Lancement du chronomètre global
-# =================================================================
+# ---------------------------------------------------------------------------
+# 1. Start wall-clock timing
+# ---------------------------------------------------------------------------
 START_TOTAL=$(date +%s)
 
 echo "================================================="
-echo "   Compilation et Lancement TTM - Ablation       "
+echo "   TTM ALUMINIUM ABLATION RUN                    "
 echo "================================================="
 
-# 1. NETTOYAGE (Sécurisé et Manuel)
-echo "[1/7] Préparation du dossier"
+# ---------------------------------------------------------------------------
+# 2. Clean the previous run
+# ---------------------------------------------------------------------------
+echo "[1/4] Preparing the case directory"
 #rm -f Res.txt
 rm -f log.*
 foamListTimes -rm
-rm -rf processor* 2>/dev/null || echo "Dossiers processeurs verrouillés, on continue..."
+rm -rf processor* 2>/dev/null || echo "Locked processor directories were kept."
 rm -rf postProcessing/ 2>/dev/null || true
 
-# 2. MAILLAGE
-echo "[2/7] Création du maillage (blockMesh)"
+# ---------------------------------------------------------------------------
+# 3. Build and decompose the mesh
+# ---------------------------------------------------------------------------
+echo "[2/4] Creating the mesh (blockMesh)"
 blockMesh > log.blockMesh 2>&1
 
 # 3. DÉCOMPOSITION
-echo "[3/7] Décomposition du domaine"
+echo "[3/4] Decomposing the domain"
 decomposePar -force > log.decomposePar 2>&1
 
-# 4. CALCUL EN PARALLÈLE
-echo "[4/7] Résolution avec TTm en parallèle"
+# ---------------------------------------------------------------------------
+# 4. Solve in parallel
+# ---------------------------------------------------------------------------
+echo "[4/4] Solving with TTmAl in parallel"
 mpirun -np 4 TTmAl -parallel | tee log.TTmAl | grep --line-buffered -E "Time =|PGC|ExecutionTime"
 
-# 5. RECONSTRUCTION
-echo "[5/7] Reconstruction des champs (reconstructPar)"
-START_RECON=$(date +%s)
-reconstructPar > log.reconstructPar 2>&1 || true
-END_RECON=$(date +%s)
-TIME_RECON=$((END_RECON - START_RECON))
-echo "      Temps de reconstruction : ${TIME_RECON} s"
+# Reconstruction is intentionally disabled. The probe function object writes
+# the histories used by the supplied plotting scripts during the solver run.
+#echo "[optional] Reconstructing fields (reconstructPar)"
+#START_RECON=$(date +%s)
+#reconstructPar > log.reconstructPar 2>&1 || true
+#END_RECON=$(date +%s)
+#TIME_RECON=$((END_RECON - START_RECON))
+#echo "      Temps de reconstruction : ${TIME_RECON} s"
 
-# 6. POST-PROCESSING (Extraction des sondes)
-echo "[6/7] Extraction des données de sondes (postProcess)"
-START_POST=$(date +%s)
-postProcess -func probes > log.postProcess
-END_POST=$(date +%s)
-TIME_POST=$((END_POST - START_POST))
-echo "      Temps d'extraction : ${TIME_POST} s"
+#echo "[optional] Extracting probe data (postProcess)"
+#START_POST=$(date +%s)
+#postProcess -func probes > log.postProcess
+#END_POST=$(date +%s)
+#TIME_POST=$((END_POST - START_POST))
+#echo "      Temps d'extraction : ${TIME_POST} s"
 
-echo "[7/7] Traçage des courbes de pics de température"
-gnuplot plots/plot_Temperature.gp 
+#echo "[optional] Plotting temperature histories"
+#gnuplot plots/plot_Temperature.gp
 
-# =================================================================
-# Arrêt du chronomètre global
-# =================================================================
+# ---------------------------------------------------------------------------
+# 5. Report elapsed wall-clock time
+# ---------------------------------------------------------------------------
 END_TOTAL=$(date +%s)
 TIME_TOTAL=$((END_TOTAL - START_TOTAL))
 
 echo "================================================="
-echo "   Calcul terminé ! Données prêtes dans probes/  "
-echo "   TEMPS TOTAL D'EXÉCUTION : ${TIME_TOTAL} s   "
+echo "   Calculation completed. Probe data are available."
+echo "   TOTAL EXECUTION TIME: ${TIME_TOTAL} s        "
 echo "================================================="
