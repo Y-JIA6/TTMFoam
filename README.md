@@ -218,7 +218,7 @@ If TTMFoam contributes to your work, please cite the associated SoftwareX manusc
 ```bibtex
 @article{kpelly2026ttmfoam,
   title   = {TTMFoam: Two-temperature modeling of ultrashort-pulse laser ablation of metals with temperature-dependent quantum thermophysical properties},
-  author  = {Kpelly, Koffi and Jia, Yabo},
+  author  = {Kpelly, K, Ivan and Jia, Yabo},
   journal = {SoftwareX},
   year    = {2026},
   note    = {Manuscript under revision}
