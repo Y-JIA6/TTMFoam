@@ -1,49 +1,29 @@
-# =================================================================
-# Script Gnuplot : Comparaison des résultats d'ablation (Fig 4)
-# =================================================================
+# =========================================================================
+# Script Gnuplot: Aluminum ablation validation against Omeñaca et al.
+# Compares depth and squared diameter with experimental uncertainty bars.
+# =========================================================================
 
 set terminal pngcairo size 1200,600 enhanced font 'Arial,14'
 set output 'Ablation.png'
 
-# Utilisation d'un affichage en 2 colonnes (Multiplot)
-set multiplot layout 1,2 title "Diameter and Depth Comparison" font ",14"
+# Use a two-panel layout.
+set multiplot layout 1,2 title "Ablation Depth and Squared Diameter" font ",14"
+set bars 1.5
 
-# =================================================================
-# 1. DÉFINITION DES FONCTIONS THÉORIQUES (Tableau 2)
-# =================================================================
-
-# Gnuplot utilise log() pour le logarithme népérien (ln).
-# L'expression (x > seuil) ? valeur : 1/0 permet de ne pas tracer 
-# la courbe quand la fluence est inférieure au seuil d'ablation (1/0 = erreur ignorée).
-
-# a) Profondeur (Eq. 11)
-delta_th = 95.66
-F_th_depth = 0.49
-Depth(x) = (x > F_th_depth) ? delta_th * log(x / F_th_depth) : 1/0
-
-# b) Diamètre au carré (Eq. 12)
-w0_th = 9.97
-F_th_diam = 0.53
-Diam2(x) = (x > F_th_diam) ? 2 * (w0_th**2) * log(x / F_th_diam) : 1/0
-
-
-# =================================================================
-# 2. BLOCS DE DONNÉES INTÉGRÉS
-# Colonnes : 1=Fluence | 2=Profondeur(nm) | 3=Diamètre_Carré(µm2)
-# =================================================================
-
+# Experimental columns: fluence, depth, depth_low, depth_high, diameter2, diameter2_low, diameter2_high.
 $ExpData << EOD
-1.0 65 130
-2.0 140 250
-3.0 180 350
-4.0 200 390
-5.0 225 425
-6.0 250 490
-7.0 280 500
-8.0 310 510
-9.0 340 530
+1.0  65  40  90  130 122 138
+2.0 140 120 158  250 240 260
+3.0 180 162 200  350 337 367
+4.0 200 170 230  390 360 418
+5.0 225 202 245  425 407 445
+6.0 250 227 276  490 470 510
+7.0 280 260 302  500 480 520
+8.0 310 273 350  510 495 525
+9.0 340 295 377  530 510 550
 EOD
 
+# Omeñaca simulation columns: fluence, depth, squared diameter.
 $SimData << EOD
 0.5 0 0
 1.2 90 150
@@ -63,9 +43,7 @@ $SimData << EOD
 10.8 345 600
 EOD
 
-# =================================================================
-# 3. TRACÉ DU GRAPHIQUE GAUCHE : PROFONDEUR
-# =================================================================
+# Plot the ablation depth.
 set title "a) Ablation depths"
 set xlabel "Fluence (J/cm^2)"
 set ylabel "Depth (nm)"
@@ -74,30 +52,25 @@ set yrange [-10:400]
 set grid lc rgb "#E0E0E0"
 set key top left
 
-# Ligne de séparation des régimes
-set arrow from 5.0, graph 0 to 5.0, graph 1 nohead dt 4 lc rgb "black"
+set arrow 1 from 5.0, graph 0 to 5.0, graph 1 nohead dt 4 lw 1.5 lc rgb "black"
+set label 1 "Regime 1" at graph 0.14,0.06 font ",12"
+set label 2 "Regime 2" at graph 0.68,0.06 font ",12"
 
 plot \
-    $ExpData using 1:2 with points pt 7 ps 1.2 lc rgb "blue" title "Experimental", \
-    $SimData using 1:2 with points pt 5 ps 0.8 lc rgb "black" title "Omeñaca simulation", \
+    $ExpData using 1:2:3:4 with yerrorbars pt 5 ps 1.1 lw 1.5 lc rgb "#2045D8" title "Experimental", \
+    $SimData using 1:2 with points pt 7 ps 0.8 lc rgb "black" title "Omeñaca simulation", \
     'Res.txt' using 1:3 with points pt 11 ps 2.0 lc rgb "red" title "OpenFOAM"
 
-# =================================================================
-# 4. TRACÉ DU GRAPHIQUE DROIT : DIAMÈTRE AU CARRÉ
-# =================================================================
+# Plot the squared ablation diameter.
 set title "b) Squared Diameters"
 set xlabel "Fluence (J/cm^2)"
 set ylabel "Diameter^2 ({/Symbol m}m^2)"
 set xrange [0:11]
 set yrange [-20:650]
 
-set arrow from 5.0, graph 0 to 5.0, graph 1 nohead dt 4 lc rgb "black"
-
-# Attention ici : pour MyData, on utilise ($3**2) pour élever 
-# votre diamètre mesuré au carré dynamiquement !
 plot \
-    $ExpData using 1:3 with points pt 7 ps 1.2 lc rgb "blue" title "Experimental", \
-    $SimData using 1:3 with points pt 5 ps 0.8 lc rgb "black" title "Omeñaca simulation", \
+    $ExpData using 1:5:6:7 with yerrorbars pt 5 ps 1.1 lw 1.5 lc rgb "#2045D8" title "Experimental", \
+    $SimData using 1:3 with points pt 7 ps 0.8 lc rgb "black" title "Omeñaca simulation", \
     'Res.txt' using 1:($5**2) with points pt 11 ps 2.0 lc rgb "red" title "OpenFOAM"
 
 unset multiplot
