@@ -1,269 +1,237 @@
 # TTMFoam
 
-**An OpenFOAM solver for two-temperature modeling of ultrashort-pulse laser ablation of metals with temperature-dependent quantum thermophysical properties.**
+**An OpenFOAM solver for two-temperature modelling of ultrashort-pulse laser heating and ablation diagnostics in aluminium.**
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![OpenFOAM 10](https://img.shields.io/badge/OpenFOAM-10-brightgreen.svg)](https://openfoam.org/version/10/)
 
-TTMFoam is a finite-volume solver, built on OpenFOAM 10, for the
-**Two-Temperature Model (TTM)** of femtosecond laser heating and ablation of metals. It evaluates the electron heat capacity `Ce(Te)`, the electron–phonon coupling factor `G(Te)`, and the dynamic optical response from direct numerical integration of the Fermi–Dirac distribution**, so it remains valid from room temperature up to dense-plasma electron temperatures — beyond the range where the Sommerfeld linearization holds.
+TTMFoam is a finite-volume solver for the two-temperature model (TTM) of ultrashort-pulse laser--metal interaction. It is implemented in OpenFOAM 10 and is supplied with an axisymmetric aluminium validation case and a Method of Manufactured Solutions (MMS) verification case. The code evaluates temperature-dependent electron properties from free-electron Fermi--Dirac integrals rather than assuming a Sommerfeld-linear heat capacity.
 
----
+## Main features
 
-## Table of contents
+- Fermi--Dirac lookup tables for the chemical potential `mu(Te)`, electron heat capacity `Ce(Te)`, and electron--phonon coupling factor `G(Te)`.
+- Temperature-dependent electron and lattice properties, including a Shomate lattice heat capacity and relaxation-time-based thermal conductivities.
+- A calibrated Drude optical response at 1032 nm. The ambient reflectivity is anchored to `R = 0.91`; the temperature dependence follows the Drude relaxation time without a fluence-dependent empirical absorption correction.
+- A Gaussian, depth-resolved Beer--Lambert laser source with exact cell averaging.
+- A 2D axisymmetric wedge mesh and MPI parallel execution.
+- On-the-fly crater diagnostics based on the threshold `Tl >= 0.9 x 6700 K` (6030 K).
+- An automated multi-fluence campaign that extends each run until the crater diagnostic is quiet.
+- MMS spatial and temporal convergence studies.
 
-- [Features](#features)
-- [Physics overview](#physics-overview)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Repository structure](#repository-structure)
-- [Running a case](#running-a-case)
-- [Configuring a simulation](#configuring-a-simulation)
-- [Outputs](#outputs)
-- [Code verification (MMS)](#code-verification-mms)
-- [Validation](#validation)
-- [Citing TTMFoam](#citing-ttmfoam)
-- [License](#license)
-- [Contact](#contact)
+## Governing model
 
----
-## Features
+TTMFoam solves
 
-- **Quantum thermophysical properties.** `Ce(Te)` and `G(Te)` computed from the Fermi-Dirac distribution, valid to plasma temperatures.
-- **Dynamic optical model.** Temperature-dependent Drude reflectivity `R(Te)` and effective penetration depth `δ_eff = δ_opt + δ_ball`.
-- **Depth-resolved laser source.** Beer–Lambert deposition with exact cell-averaged absorption (`sinh` correction) and a Gaussian beam, traversed column-by-column with  an `O(Nz)` face-walking algorithm.
-- **2D-axisymmetric** (wedge) geometry on a stretched, structured mesh.
-- **Ablation diagnostics.** Crater depth and radius extracted on the fly using the phase-explosion criterion `Tl >= 0.9 Tc`.
-- **Built-in verification mode.** A run-time switch activates a Method of Manufactured Solutions (MMS) source and an L2-error monitor.
-- **Modular headers.** Each physical model lives in its own `.H` file and can be replaced without touching the solver loop.
-
----
-
-## Physics overview
-
-The solver advances the coupled energy equations :
-
-```
-Ce(Te) dTe/dt = div(ke grad Te) - G(Te)(Te - Tl) + S(r,z,t)
-Cl(Tl) dTl/dt = div(kl grad Tl) + G(Te)(Te - Tl)
+```text
+Ce(Te) dTe/dt = div(ke grad Te) - G(Te) (Te - Tl) + Qlaser
+Cl(Tl) dTl/dt = div(kl grad Tl) + G(Te) (Te - Tl)
 ```
 
-- `Te`, `Tl` — electron and lattice temperatures
-- `Ce`, `Cl` — volumetric heat capacities
-- `ke`, `kl` — thermal conductivities
-- `G`        — electron–phonon coupling factor
-- `S`        — laser source term
+where `Te` and `Tl` are the electron and lattice temperatures, `Ce` and `Cl` are volumetric heat capacities, `ke` and `kl` are thermal conductivities, `G` is the electron--phonon coupling factor, and `Qlaser` is the volumetric laser source.
 
-Boundaries are adiabatic (zero-flux), valid over the sub-20 ps timescale where radiative and convective losses are negligible.
+For the supplied aluminium case, `Ce`, `G`, and `mu` are tabulated once at start-up on a 10 K grid from 300 K to 300 000 K and then linearly interpolated in each cell. The simulation log reports whether the peak electron temperature remains inside this table range.
 
----
+The laser source uses the surface Drude absorptivity, `A = 1 - R`, and a local attenuation length
+
+```text
+delta_eff = delta_opt + vF tau_e.
+```
+
+Here, `R` is evaluated at the irradiated surface and `delta_eff` is evaluated cell by cell along the Beer--Lambert path. The ballistic contribution is therefore treated as a transport-length correction to the deposition source, not as an independent optical property.
+
+## Scope and limitations
+
+The supplied model is intended for ultrashort-pulse aluminium simulations within the assumptions below.
+
+- The TTM presumes that the electron population can be represented by an electron temperature. Non-thermal electron kinetics and hyperbolic TTM physics are not implemented.
+- The Fermi--Dirac properties use a free-electron density of states. Material-specific *ab initio* densities of states, especially for transition metals with d bands, are not included.
+- The optical response is a calibrated Drude model. Interband transitions, Drude--Lorentz terms, and explicit collisionless absorption are outside the present implementation.
+- The code diagnoses a crater from a lattice-temperature threshold; it does not remove material or solve hydrodynamic expansion.
+- The distributed material parameters and validation case are for aluminium. Applying the solver to another metal requires appropriate material parameters and validation.
 
 ## Requirements
 
-| Dependency | Version | Notes |
-|---|---|---|
-| OpenFOAM | 10 | [openfoam.org](https://openfoam.org/version/10/) |
-| C++ compiler | C++14 | bundled with OpenFOAM toolchain |
-| MPI | any OpenFOAM-supported | for parallel runs |
-| gnuplot | optional | convergence / result plots |
+| Dependency | Requirement | Purpose |
+|---|---:|---|
+| OpenFOAM | 10 | finite-volume framework and build system |
+| C++ compiler | C++14-compatible | compilation through `wmake` |
+| MPI | OpenFOAM-compatible | parallel validation runs |
+| Bash and awk | standard POSIX tools | automation scripts |
+| gnuplot | optional | figures from the supplied plotting scripts |
 
-**Operating systems:** Linux, macOS, or Windows via WSL. OpenFOAM 10 must be installed and its environment sourced (`source /opt/openfoam10/etc/bashrc`) before building.
+OpenFOAM must be installed and its environment sourced before compilation, for example:
 
----
+```bash
+source /opt/openfoam10/etc/bashrc
+```
 
 ## Installation
 
+Clone or download the repository, then compile the solver from the repository root:
+
 ```bash
-# 1. Source the OpenFOAM environment
-source /opt/openfoam10/etc/bashrc
-
-# 2. Clone the repository
 cd TTMFoam
-
-# 3. Build the solver
-cd /TTmAl
+source /opt/openfoam10/etc/bashrc
+cd Solver
 wclean
 wmake
-```
-
-A successful build places the `TTmAl` executable in `$FOAM_USER_APPBIN`. Verify with:
-
-```bash
 which TTmAl
 ```
 
----
+The executable is installed in `$FOAM_USER_APPBIN`. The final command should print the path to `TTmAl`.
 
 ## Repository structure
 
-```
+```text
 TTMFoam/
-├── TTmAl/
-│   ├── TTmAl.C              # main solver: time loop + Picard loop
-│   ├── createFields.H       # field declarations
-│   ├── readProperties.H     # reads dictionaries at run time
-│   ├── createTables.H       # precomputes Ce(Te), G(Te) tables
-│   ├── updateThermo.H       # Cl, tau_e, ke, kl
-│   ├── updateOptical.H      # Drude R(Te), delta_eff
-│   ├── calculateLaser.H     # Beer–Lambert Gaussian source
-│   ├── mmsParams.H          # MMS constants (verification mode)
-│   ├── mmS.H                # MMS manufactured source
-│   ├── mmSL2.H              # MMS L2-error monitor
-│   └── Make/                # wmake build files
-│       ├── files            
-│       └── options
-├── cases/
-│   ├── caseAl/                  # validation case (Omeñaca 2024)
-│   │   ├── 0/                   # initial/boundary fields (Te, Tl)
-│   │   ├── constant/            # material & laser dictionaries
-│   │   ├── plots/
-│   │   │   ├── plot_Ablation.gp           # plotting ablation
-│   │   │   ├── plot_All.gp                # Plot multiples Fluences peaks of temperatures Tl and Te 
-│   │   │   └── plot_Temperatures.gp       # Plot one Fluence peak of temperatures Tl and Te
-│   │   ├── scripts/
-│   │   │   ├── Onerun.sh                  # run a physics case end to end
-│   │   │   └── Allrun.sh                  # run a multiples phisics cases 
-│   │   └── system/                        # blockMeshDict, controlDict, fvSchemes ...
-│   ├── MMScase/                 # verification case (MMS)
-│   │   ├── 0/                   # initial/boundary fields (Te, Tl)
-│   │   ├── constant/            # material & laser dictionaries
-│   │   ├── plots/
-│   │   │   ├── spacialconvergence.gp                                   # plotting spacial convergence
-│   │   │   └── plot_Temperatures.gp  timeconvergence.gp                # Plotting time convergence
-│   │   ├── scripts/
-│   │   │   ├── mmsrun.sh                  # spatial convergence sweep
-│   │   │   └── timerun.sh                 # temporal convergence sweep 
-│   └── └── system/                        # blockMeshDict, controlDict, fvSchemes ...
-├── docs/                        # figures and additional documentation
-├── README.md
-└── License.txt
+├── Solver/
+│   ├── TTmAl.C                 # main time loop, Picard iteration, diagnostics
+│   ├── readProperties.H         # case dictionaries
+│   ├── createFields.H           # OpenFOAM fields
+│   ├── createTables.H           # FEG property tables
+│   ├── updateThermo.H           # thermophysical properties and relaxation time
+│   ├── updateOptical.H          # calibrated Drude R and delta_opt
+│   ├── calculateLaser.H         # Beer--Lambert laser source
+│   ├── mmsParams.H, mmS.H, mmSL2.H
+│   └── Make/                    # wmake configuration
+├── Cases/
+│   ├── caseAl/                  # aluminium validation case
+│   │   ├── 0/, constant/, system/
+│   │   ├── plots/               # gnuplot scripts
+│   │   └── scripts/
+│   │       ├── Onerun.sh        # one parallel run on four MPI ranks
+│   │       ├── Serierun.sh      # one serial run
+│   │       ├── ConvergedRun.sh  # adaptive end-time convergence for one fluence
+│   │       └── Allrun.sh        # adaptive 1--9 J/cm2 campaign
+│   └── MMScase/                 # Method of Manufactured Solutions case
+│       ├── 0/, constant/, system/, plots/
+│       └── scripts/mmsrun.sh, scripts/timerun.sh
+├── manuscript/                  # manuscript and response-letter sources
+└── README.md
 ```
 
----
+## Running the aluminium case
 
-## Running a case
+All commands below assume that `TTmAl` has already been compiled and OpenFOAM has been sourced.
 
-### Physics (ablation) case
+### Parallel run (four ranks)
 
 ```bash
-cd cases/caseAl
-blockMesh                        # generate the mesh
-TTmAl                            # run in serial
-# or in parallel:
-decomposePar -force
-mpirun -np 4 TTmAl -parallel
-reconstructPar
+cd TTMFoam/Cases/caseAl
+bash scripts/Onerun.sh
 ```
 
-At the end, the solver prints an ablation report and appends a line to
-`Res.txt`:
+`Onerun.sh` clears previous time directories, builds the mesh, decomposes the domain, and runs `TTmAl` on four MPI ranks. It does not recompile the solver.
 
-```
-Fluence | Depth_theory | Depth_numeric (nm) | Diameter_theory | Diameter_numeric (um)
-```
-
-### Convenience script
+### Serial run
 
 ```bash
-cd cases/ablationAl
-../../scripts/Onerun.sh
+cd TTMFoam/Cases/caseAl
+bash scripts/Serierun.sh
 ```
 
----
+This is useful for debugging, MPI comparisons, or machines without an MPI launch configuration.
+
+### Adaptive multi-fluence campaign
+
+```bash
+cd TTMFoam/Cases/caseAl
+bash scripts/Allrun.sh
+```
+
+The campaign evaluates fluences from 1 to 9 J/cm2. The 1 J/cm2 case begins at 20 ps. If crater growth remains significant, the same case is repeated from `t = 0` with an end time increased by 10 ps. Once accepted, the next fluence begins at the previous accepted end time plus 10 ps. The default safety limit is 200 ps.
+
+The crater diagnostic uses a 0.5 nm growth threshold and requires 10 ps without significant depth or radius growth. Only the accepted result for each fluence is retained in `Res.txt`; all attempted endpoints are recorded in `convergence_history/crater_quiet_convergence.tsv`.
+
+To run the same procedure for one already configured fluence:
+
+```bash
+bash scripts/ConvergedRun.sh 20 10 10 200
+```
+
+The four arguments are, respectively, the initial end time, the extension increment, the required quiet-time window, and the maximum end time, all in ps.
 
 ## Configuring a simulation
 
-All physical parameters are read from dictionaries — **no recompilation is needed** to change a case. Key entries (in `constant/` and `system/`):
+Most case inputs are read at run time and can be changed without recompiling:
 
-| Quantity | Symbol | Example | Location |
-|---|---|---|---|
-| Wavelength | λ | 1032 nm | laser dict |
-| Pulse duration | τ_p | 280 fs | laser dict |
-| Beam waist | w0 | 10 µm | laser dict |
-| Peak fluence | F | 1–9 J/cm² | laser dict |
-| Ablation temperature | Tc | 6700 K | solver/dict |
-| Domain radius / depth | Rmax / Zmax | 15 / 2 µm | blockMeshDict |
-| Mesh | Nr × Nz | 200 × 300 | blockMeshDict |
+| Input | Location |
+|---|---|
+| Fluence, wavelength, pulse duration, beam waist | `Cases/caseAl/constant/laserProperties` |
+| Aluminium thermophysical and relaxation parameters | `Cases/caseAl/constant/ttmProperties` |
+| End time, write interval, Picard tolerances | `Cases/caseAl/system/controlDict` |
+| Mesh dimensions and grading | `Cases/caseAl/system/blockMeshDict` |
+| Linear solver controls | `Cases/caseAl/system/fvSolution` |
+| Surface and axial probes | `Cases/caseAl/system/probes` |
 
-The mesh uses a geometric grading toward the surface (≈1 nm cells at the surface, ≈25 nm in the bulk) to resolve the optical skin depth.
+Changing a solver-level model, the FEG table range, or the crater threshold requires modifying the corresponding source file in `Solver/` and rebuilding with `wmake`.
 
----
+## Outputs and figures
 
-## Outputs
+The principal outputs of the aluminium case are:
 
-- **Time directories** (`0/`, `1e-13/`, …) — `Te`, `Tl`, and property fields, viewable in ParaView (`paraFoam` or `touch case.foam`).
-- **`Res.txt`** : ablation depth and diameter vs. fluence.
-- **Console report** : peak temperatures and crater geometry per run.
+- `postProcessing/probes/` for histories of `Te`, `Tl`, `Qlaser`, `Ce_var`, `ke_var`, `G_var`, `R_field`, `deltaOpt_field`, `deltaEff_field`, and `tauE_field`.
+- `FEG_param.dat` for the generated FEG property tables.
+- `Res.txt` for the accepted fluence, crater depth, and crater diameter values.
+- `convergence_history/` for individual endpoint logs and the convergence history.
+- `resultats_fluences/` for probe histories retained by `Allrun.sh`.
 
----
-
-## Code verification (MMS)
-
-TTMFoam includes a built-in Method of Manufactured Solutions mode for verifying the discretization independently of the physics.
-
-Enable it by adding to `system/controlDict` :
-
-```c
-mmsVerification  true ;
-```
-
-Then run a convergence study :
+After a completed run, selected figures can be generated with:
 
 ```bash
-cd cases/MMScase
-
-# temporal order (expect ~ 1, backward Euler)
-../../scripts/runMMS_time.sh
-gnuplot ../../plots/timeconvergence.gp
-
-# spatial order (expect ~ 2, Gauss linear)
-../../scripts/runMMS.sh
-gnuplot ../../plots/spacialconvergence.gp
+gnuplot plots/plot_Temperature.gp
+gnuplot plots/plot_All.gp
+gnuplot plots/plot_Ablation.gp
+gnuplot plots/plot_params.gp
+gnuplot plots/plot_Optical.gp
 ```
 
-**Reference results** (this solver): temporal order `p ≈ 0.99`; spatial order `p ≈ 1.97` (electron eq.) and `p ≈ 2.01` (lattice eq.), matching the theoretical orders of the backward-Euler and Gauss-linear schemes.
+## Code verification with MMS
 
-The manufactured solution and parameters (mode, amplitudes, frozen properties) are set in `mmsParams.H`.
+The MMS case verifies the transient and diffusion discretization independently of the laser-ablation physics. Its `system/controlDict` enables `mmsVerification true;`.
 
----
+```bash
+cd TTMFoam/Cases/MMScase
+bash scripts/timerun.sh
+gnuplot plots/timeconvergence.gp
 
-## Validation
-
-The `cases/caseAl` case reproduces the femtosecond aluminum ablation of Omeñaca et al. (Opt. Laser Technol. 170, 2024, 110283): λ = 1032 nm, τ_p = 280 fs, w0 = 10 µm. Simulated crater depth and squared diameter follow the expected logarithmic law
-
-```
-h(F)  = δ   · ln(F / Fth_h)
-D²(F) = 2w0² · ln(F / Fth_D)
+bash scripts/mmsrun.sh
+gnuplot plots/spacialconvergence.gp
 ```
 
-and agree with the reference experimental and numerical data over F = 1–9 J/cm². A simple run for one fluencce a few minutes and run completes in a few hours on four cores.
+The temporal study refines `deltaT` on a fixed mesh; the spatial study refines the axial mesh with fixed time settings. Both scripts modify their case dictionaries during the sweep. Restore the tracked case files afterwards if you need the original configuration:
 
----
+```bash
+git restore system/controlDict system/blockMeshDict
+```
 
-## Citing TTMFoam
+The expected orders are approximately one for backward Euler in time and two for the Gauss-linear diffusion discretization in space.
 
-If you use TTMFoam in your research, please cite the SoftwareX article :
+## Aluminium validation case
+
+The supplied case uses the experimental conditions reported by Omeñaca *et al.* for femtosecond laser ablation of aluminium: wavelength 1032 nm, pulse duration 280 fs, and beam waist 10 um. It is intended as a reproducible validation and comparison case; the interpretation of crater depth remains subject to the scope limitations stated above.
+
+## Citation
+
+If TTMFoam contributes to your work, please cite the associated SoftwareX manuscript. Replace the placeholder with the final bibliographic information and DOI once available.
 
 ```bibtex
 @article{kpelly2026ttmfoam,
-  title   = {TTMFoam: An OpenFOAM solver for two-temperature modeling of ultrashort-pulse laser ablation of metals with temperature-dependent quantum thermophysical properties},
+  title   = {TTMFoam: Two-temperature modeling of ultrashort-pulse laser ablation of metals with temperature-dependent quantum thermophysical properties},
   author  = {Kpelly, Koffi and Jia, Yabo},
   journal = {SoftwareX},
   year    = {2026},
-  note    = {Submitted}
+  note    = {Manuscript under revision}
 }
 ```
 
----
-
 ## License
 
-Distributed under the **GNU General Public License v3 (GPLv3)** : see [`License.txt`](License.txt). This is compatible with OpenFOAM, which is itself GPLv3.
-
----
+TTMFoam is distributed under the GNU General Public License v3.0 (GPL-3.0-or-later).
 
 ## Contact
 
-**Koffi Kpelly** — koffi.kpelly@uph.fr
-**Yabo Jia** - yabo.jia@uphf.fr
-Issues and feature requests : please use the GitHub [issue tracker](https://github.com/<user>/TTMFoam/issues).
+- Koffi Kpelly — ivan.kpelly@icloud.com
+- Yabo Jia — yabo.jia@uphf.fr
+
+For questions, bug reports, or feature requests, please open an issue in the repository.
