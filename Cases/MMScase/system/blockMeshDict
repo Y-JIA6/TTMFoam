@@ -17,21 +17,22 @@ FoamFile
 
 convertToMeters 1;
 
-// Dimensions de l'article : Rayon = 15µm, Profondeur = 2µm
+// 5-degree wedge sector representing an axisymmetric domain: radius 15 um
+// and depth 2 um. The MMS mesh is uniform to isolate spatial convergence.
 vertices
 (
-    (0 0 0)                           // 0: Bottom Axis (Z = 0)
-    (15e-6 -0.654e-6 0)               // 1: Bottom Right Front
-    (15e-6  0.654e-6 0)               // 2: Bottom Right Back
-    (0 0 2e-6)                        // 3: Top Axis (Surface Laser à Z = 2µm)
-    (15e-6 -0.654e-6 2e-6)            // 4: Top Right Front
-    (15e-6  0.654e-6 2e-6)            // 5: Top Right Back
+    (0 0 0)                           // 0: lower axis vertex
+    (15e-6 -0.654e-6 0)               // 1: lower front radial vertex
+    (15e-6  0.654e-6 0)               // 2: lower back radial vertex
+    (0 0 2e-6)                        // 3: upper axis vertex
+    (15e-6 -0.654e-6 2e-6)            // 4: upper front radial vertex
+    (15e-6  0.654e-6 2e-6)            // 5: upper back radial vertex
 );
 
-// Maillage : 200 mailles en radial, 1 en azimutal, 600 en profondeur
+// 200 radial, 1 azimuthal, and 128 uniform depth cells.
 blocks
 (
-    hex (0 1 2 0 3 4 5 3) (200 1 128) simpleGrading (1 1 1) 
+    hex (0 1 2 0 3 4 5 3) (200 1 128) simpleGrading (1 1 1)
 );
 
 edges
@@ -42,7 +43,7 @@ boundary
 (
     axis
     {
-        type empty; // L'axe ne résout rien
+        type empty; // Degenerate axis face of the wedge sector.
         faces
         (
             (0 3 3 0)
@@ -50,7 +51,7 @@ boundary
     }
     right
     {
-        type patch; // On appliquera un zeroGradient dans 0/
+        type patch; // Boundary condition is specified in the 0/ fields.
         faces
         (
             (1 2 5 4)
@@ -74,7 +75,7 @@ boundary
     }
     bottom
     {
-        type patch; // On appliquera un zeroGradient dans 0/
+        type patch; // Boundary condition is specified in the 0/ fields.
         faces
         (
             (0 2 1 0)
@@ -82,7 +83,7 @@ boundary
     }
     top
     {
-        type patch; // Surface chauffée par le laser
+        type patch; // Upper boundary of the verification domain.
         faces
         (
             (3 4 5 3)
