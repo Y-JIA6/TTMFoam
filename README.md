@@ -5,11 +5,11 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![OpenFOAM 10](https://img.shields.io/badge/OpenFOAM-10-brightgreen.svg)](https://openfoam.org/version/10/)
 
-TTMFoam is a finite-volume solver for the two-temperature model (TTM) of ultrashort-pulse laser--metal interaction. It is implemented in OpenFOAM 10 and is supplied with an axisymmetric aluminium validation case and a Method of Manufactured Solutions (MMS) verification case. The code evaluates temperature-dependent electron properties from free-electron Fermi--Dirac integrals rather than assuming a Sommerfeld-linear heat capacity.
+TTMFoam is a finite-volume solver for the two-temperature model (TTM) of ultrashort-pulse laser--metal interaction. It is implemented in OpenFOAM 10 and is supplied with an axisymmetric aluminium validation case and a Method of Manufactured Solutions (MMS) verification case. The code evaluates temperature-dependent electron properties from free-electron Fermi-Dirac integrals rather than assuming a Sommerfeld-linear heat capacity.
 
 ## Main features
 
-- Fermi--Dirac lookup tables for the chemical potential `mu(Te)`, electron heat capacity `Ce(Te)`, and electron--phonon coupling factor `G(Te)`.
+- Fermi-Dirac lookup tables for the chemical potential `mu(Te)`, electron heat capacity `Ce(Te)`, and electron--phonon coupling factor `G(Te)`.
 - Temperature-dependent electron and lattice properties, including a Shomate lattice heat capacity and relaxation-time-based thermal conductivities.
 - A calibrated Drude optical response at 1032 nm. The ambient reflectivity is anchored to `R = 0.91`; the temperature dependence follows the Drude relaxation time without a fluence-dependent empirical absorption correction.
 - A Gaussian, depth-resolved Beer--Lambert laser source with exact cell averaging.
@@ -27,7 +27,7 @@ Ce(Te) dTe/dt = div(ke grad Te) - G(Te) (Te - Tl) + Qlaser
 Cl(Tl) dTl/dt = div(kl grad Tl) + G(Te) (Te - Tl)
 ```
 
-where `Te` and `Tl` are the electron and lattice temperatures, `Ce` and `Cl` are volumetric heat capacities, `ke` and `kl` are thermal conductivities, `G` is the electron--phonon coupling factor, and `Qlaser` is the volumetric laser source.
+where `Te` and `Tl` are the electron and lattice temperatures, `Ce` and `Cl` are volumetric heat capacities, `ke` and `kl` are thermal conductivities, `G` is the electron-phonon coupling factor, and `Qlaser` is the volumetric laser source.
 
 For the supplied aluminium case, `Ce`, `G`, and `mu` are tabulated once at start-up on a 10 K grid from 300 K to 300 000 K and then linearly interpolated in each cell. The simulation log reports whether the peak electron temperature remains inside this table range.
 
@@ -37,15 +37,15 @@ The laser source uses the surface Drude absorptivity, `A = 1 - R`, and a local a
 delta_eff = delta_opt + vF tau_e.
 ```
 
-Here, `R` is evaluated at the irradiated surface and `delta_eff` is evaluated cell by cell along the Beer--Lambert path. The ballistic contribution is therefore treated as a transport-length correction to the deposition source, not as an independent optical property.
+Here, `R` is evaluated at the irradiated surface and `delta_eff` is evaluated cell by cell along the Beer-Lambert path. The ballistic contribution is therefore treated as a transport-length correction to the deposition source, not as an independent optical property.
 
 ## Scope and limitations
 
 The supplied model is intended for ultrashort-pulse aluminium simulations within the assumptions below.
 
 - The TTM presumes that the electron population can be represented by an electron temperature. Non-thermal electron kinetics and hyperbolic TTM physics are not implemented.
-- The Fermi--Dirac properties use a free-electron density of states. Material-specific *ab initio* densities of states, especially for transition metals with d bands, are not included.
-- The optical response is a calibrated Drude model. Interband transitions, Drude--Lorentz terms, and explicit collisionless absorption are outside the present implementation.
+- The Fermi-Dirac properties use a free-electron density of states. Material-specific *ab initio* densities of states, especially for transition metals with d bands, are not included.
+- The optical response is a calibrated Drude model. Interband transitions, Drude-Lorentz terms, and explicit collisionless absorption are outside the present implementation.
 - The code diagnoses a crater from a lattice-temperature threshold; it does not remove material or solve hydrodynamic expansion.
 - The distributed material parameters and validation case are for aluminium. Applying the solver to another metal requires appropriate material parameters and validation.
 
@@ -91,7 +91,7 @@ TTMFoam/
 │   ├── createTables.H           # FEG property tables
 │   ├── updateThermo.H           # thermophysical properties and relaxation time
 │   ├── updateOptical.H          # calibrated Drude R and delta_opt
-│   ├── calculateLaser.H         # Beer--Lambert laser source
+│   ├── calculateLaser.H         # Beer-Lambert laser source
 │   ├── mmsParams.H              # manufactured solution and MMS parameters
 │   ├── mmS.H                    # manufactured source terms
 │   ├── mmSL2.H                  # MMS L2-error evaluation
@@ -104,7 +104,7 @@ TTMFoam/
 │   │       ├── Onerun.sh        # one parallel run on four MPI ranks
 │   │       ├── Serierun.sh      # one serial run
 │   │       ├── ConvergedRun.sh  # adaptive end-time convergence for one fluence
-│   │       └── Allrun.sh        # adaptive 1--9 J/cm2 campaign
+│   │       └── Allrun.sh        # adaptive 1-9 J/cm2 campaign
 │   └── MMScase/                 # Method of Manufactured Solutions case
 │       ├── 0/, constant/, system/, plots/
 │       └── scripts/mmsrun.sh, scripts/timerun.sh
@@ -116,14 +116,27 @@ TTMFoam/
 
 All commands below assume that `TTmAl` has already been compiled and OpenFOAM has been sourced.
 
-### Parallel run (four ranks)
+### Recommended validated run (four MPI ranks)
+
+```bash
+cd TTMFoam/Cases/caseAl
+bash scripts/ConvergedRun.sh 20 10 1.25 200 1.0 0.20
+```
+
+This is the standard command for a reported crater depth and diameter. It repeats complete runs from `t = 0` until both conditions are met: (i) no new resolved crater-front cell appears during the final 1.25 ps and (ii) the depth and diameter differ by no more than 1 nm and 0.20 um, respectively, between two successive endpoints. The fixed geometry tolerances prevent a graded mesh from relaxing the convergence criterion as the crater becomes deeper. It prints either `CRATER CONVERGED` or a clear error after the 200 ps safety limit.
+
+The arguments are, respectively, the initial end time, the extension increment, the required quiet-time window, and the maximum end time (all in ps), followed by the fixed depth tolerance (nm) and diameter tolerance (um).
+
+### Single-endpoint parallel run (four ranks)
 
 ```bash
 cd TTMFoam/Cases/caseAl
 bash scripts/Onerun.sh
 ```
 
-`Onerun.sh` clears previous time directories, builds the mesh, decomposes the domain, and runs `TTmAl` on four MPI ranks. It does not recompile the solver.
+`Onerun.sh` clears previous time directories, builds the mesh, decomposes the domain, and runs `TTmAl` on four MPI ranks. It does not recompile the solver. It is intended for debugging or for inspecting fields at a prescribed end time.
+
+`Onerun.sh` reports a clear single-endpoint status. `CRATER STATUS: CONVERGED` means that no new resolved crater-front cell appeared for 1.25 ps; `CRATER STATUS: NOT CONVERGED` instructs the user to increase `endTime`. Use `ConvergedRun.sh` when an additional endpoint-to-endpoint geometry check is required.
 
 ### Serial run
 
@@ -141,17 +154,9 @@ cd TTMFoam/Cases/caseAl
 bash scripts/Allrun.sh
 ```
 
-The campaign evaluates fluences from 1 to 9 J/cm2. The 1 J/cm2 case begins at 20 ps. If crater growth remains significant, the same case is repeated from `t = 0` with an end time increased by 10 ps. Once accepted, the next fluence begins at the previous accepted end time plus 10 ps. The default safety limit is 200 ps.
+The campaign evaluates fluences from 1 to 9 J/cm2. The 1 J/cm2 case begins at 20 ps. If global geometry convergence is not reached, the same case is repeated from `t = 0` with an end time increased by 10 ps. Once accepted, the next fluence begins at the previous accepted end time plus 10 ps. The default safety limit is 200 ps.
 
-The crater diagnostic uses a 0.5 nm event-detection threshold and requires 10 ps without significant depth or radius growth. It also compares two successive endpoints: the depth and diameter changes must be smaller than the corresponding local mesh resolutions. Only the accepted result for each fluence is retained in `Res.txt`; all attempted endpoints are recorded in `convergence_history/crater_geometry_convergence.tsv`.
-
-To run the same procedure for one already configured fluence:
-
-```bash
-bash scripts/ConvergedRun.sh 20 10 10 200
-```
-
-The four arguments are, respectively, the initial end time, the extension increment, the required quiet-time window, and the maximum end time, all in ps.
+The crater diagnostic records every newly resolved depth or radius advance and requires 1.25 ps without a new front cell. It also compares two successive endpoints using the same fixed depth and diameter tolerances for every fluence. The local mesh resolutions remain in the convergence history as diagnostics only. Only the accepted result for each fluence is retained in `Res.txt`; all attempted endpoints are recorded in `convergence_history/crater_geometry_convergence.tsv`.
 
 ## Configuring a simulation
 
@@ -220,7 +225,7 @@ If TTMFoam contributes to your work, please cite the associated SoftwareX manusc
 ```bibtex
 @article{kpelly2026ttmfoam,
   title   = {TTMFoam: Two-temperature modeling of ultrashort-pulse laser ablation of metals with temperature-dependent quantum thermophysical properties},
-  author  = {Kpelly, K, Ivan and Jia, Yabo},
+  author  = {Kpelly, K. Ivan and Jia, Yabo},
   journal = {SoftwareX},
   year    = {2026},
   note    = {Manuscript under revision}
@@ -233,7 +238,7 @@ TTMFoam is distributed under the GNU General Public License v3.0 (GPL-3.0-or-lat
 
 ## Contact
 
-- Koffi Kpelly — ivan.kpelly@icloud.com
+- Koffi K. Ivan — ivan.kpelly@icloud.com
 - Yabo Jia — yabo.jia@uphf.fr
 
 For questions, bug reports, or feature requests, please open an issue in the repository.
