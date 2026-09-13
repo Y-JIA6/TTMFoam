@@ -1,28 +1,15 @@
+// File: Solver/updateThermo.H
+// Purpose: Evaluate free-electron-gas and lattice thermophysical properties.
+// Scope: Provide chemical potential, Ce, G, Cl, relaxation time, and conductivities.
 #ifndef UPDATE_THERMO_H
 #define UPDATE_THERMO_H
 
 #include "fvCFD.H"
 
-// ===========================================================================
-//  updateThermo.H
-//  Free-electron-gas (FEG) thermophysical models for the aluminum TTM.
-//
-//  Analytic DOS:  g(E) = C*sqrt(E),  C = (3/2)*n/EF^{3/2}
-//                                      = 3*gamma/(pi^2 kB^2 sqrt(EF))
-//
-//  SI units:
-//     Te, Tl : K        EF, mu : J  (EF_Al ~ 11.7 eV ~ 1.87e-18 J)
-//     gamma  : J/m^3/K^2 (Ce(300)=2.3e4 -> gamma=76.7)
-//     Ce, Cl : J/m^3/K   ke, kl : W/m/K   tau_e : s   vF : m/s (~2.03e6)
-//
-//  CONSISTENCY: for a FEG, gamma, EF and n are NOT independent:
-//     n = 2*gamma*EF/(pi^2 kB^2).  Choose gamma and EF consistently.
-// ===========================================================================
-
 namespace ttm
 {
-    const scalar kB = 1.380649e-23;     // J/K
-    const scalar eV = 1.602176634e-19;  // J
+    const scalar kB = 1.380649e-23;     // Boltzmann constant in J/K.
+    const scalar eV = 1.602176634e-19;  // Electronvolt in J.
 }
 
 // ---------------------------------------------------------------------------
