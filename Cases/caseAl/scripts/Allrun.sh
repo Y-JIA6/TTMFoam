@@ -59,8 +59,10 @@ fluences=(1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0)
 # A non-converged case is extended in ten-picosecond increments up to 200 ps.
 initial_end_ps=20
 end_increment_ps=10
-quiet_time_ps=10
+quiet_time_ps=1.25
 max_end_ps=200
+depth_tolerance_nm=1.0
+diameter_tolerance_um=0.20
 
 for F in "${fluences[@]}"
 do
@@ -76,7 +78,7 @@ do
 
     # Run the current fluence until the crater is quiet, then pass its final
     # endpoint plus ten picoseconds to the following fluence.
-    bash "$SCRIPT_DIR/ConvergedRun.sh" "$initial_end_ps" "$end_increment_ps" "$quiet_time_ps" "$max_end_ps"
+    bash "$SCRIPT_DIR/ConvergedRun.sh" "$initial_end_ps" "$end_increment_ps" "$quiet_time_ps" "$max_end_ps" "$depth_tolerance_nm" "$diameter_tolerance_um"
     if [ ! -s convergence_history/final_endpoint_ps ]; then
         echo "ERROR: final endpoint was not written by ConvergedRun.sh." >&2
         exit 1
